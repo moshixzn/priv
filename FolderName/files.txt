@@ -76,7 +76,7 @@ Surgeon.py
 WorkspaceSync.py
 gitattributes.txt
 gitignore.txt
-l1 clean.lua
+Lycoris.lua.txt
 AutomationTab.lua.txt
 BuilderTab.lua.txt
 CombatTab.lua.txt
