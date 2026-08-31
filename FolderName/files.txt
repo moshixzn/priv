@@ -41,7 +41,9 @@ SoundDefender.lua.txt
 Targeting.lua 2.txt
 Task.lua.txt
 Input.lua.txt
-Library.lua.txt
+Library.lua 2.txt
+SaveManager.lua 2.txt
+ThemeManager.lua.txt
 Configuration.lua.txt
 ControlModule.lua.txt
 CoreGuiManager.lua.txt
