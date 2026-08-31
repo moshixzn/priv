@@ -1,3 +1,22 @@
+local BASE = "https://raw.githubusercontent.com/moshixzn/priv/main/"
+
+-- Override require to fetch from GitHub
+local _require = require
+local cache = {}
+function require(path)
+    path = path:gsub("%.", "/") -- convert "Utility.Logger" → "Utility/Logger"
+    if cache[path] then return cache[path] end
+    local url = BASE .. path .. ".lua.txt"
+    local ok, result = pcall(function()
+        return loadstring(game:HttpGet(url))()
+    end)
+    if not ok then
+        -- try without .txt
+        result = loadstring(game:HttpGet(BASE .. path .. ".lua"))()
+    end
+    cache[path] = result
+    return result
+end
 -- Check for table that is shared between executions.
 if not shared then
 	return warn("No shared, no script.")
