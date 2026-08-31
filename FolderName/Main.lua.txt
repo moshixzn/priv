@@ -1,4 +1,4 @@
-local BASE = "https://raw.githubusercontent.com/moshixzn/priv/main/FolderName/"
+local BASE = "https://raw.githubusercontent.com/moshixzn/priv/main/"
 
 -- Override require to fetch from GitHub
 local _require = require
@@ -6,46 +6,36 @@ local cache = {}
 function require(path)
     path = path:gsub("%.", "/")
     if cache[path] then return cache[path] end
-
-    -- try .lua.txt first then .lua
     local url = BASE .. path .. ".lua.txt"
     local ok, result = pcall(function()
         return loadstring(game:HttpGet(url))()
     end)
     if not ok then
-        local ok2, result2 = pcall(function()
-            return loadstring(game:HttpGet(BASE .. path .. ".lua"))()
-        end)
-        if ok2 then result = result2 end
+        result = loadstring(game:HttpGet(BASE .. path .. ".lua"))()
     end
-
     cache[path] = result
     return result
 end
 
--- fix shared for executors that dont have it (Delta etc)
-if not shared then shared = {} end
-
--- Initialize Luraph globals if they do not exist
-pcall(function()
-    loadstring("getfenv().LPH_NO_VIRTUALIZE = function(...) return ... end")()
-end)
-
-getfenv().PP_SCRAMBLE_NUM = function(...) return ... end
-getfenv().PP_SCRAMBLE_STR = function(...) return ... end
-getfenv().PP_SCRAMBLE_RE_NUM = function(...) return ... end
-
-local ok1, Profiler = pcall(require, "Utility/Profiler")
-if not ok1 then
-    warn("Failed to load Profiler: " .. tostring(Profiler))
-    Profiler = { run = function(_, fn, ...) return fn(...) end }
+-- No shared table = nothing to do
+if not shared then
+    return warn("No shared, no script.")
 end
 
-local ok2, Lycoris = pcall(require, "Lycoris")
-if not ok2 then
-    warn("Failed to load Lycoris: " .. tostring(Lycoris))
-    return
-end
+-- Initialize Luraph + preprocessor globals into the TRUE global env
+-- so every module loaded via require() can see them immediately.
+-- Using getgenv() instead of loadstring+getfenv() fixes the environment
+-- isolation bug where LPH_NO_VIRTUALIZE was invisible to submodules.
+getgenv().LPH_NO_VIRTUALIZE   = function(...) return ... end
+getgenv().PP_SCRAMBLE_NUM      = function(...) return ... end
+getgenv().PP_SCRAMBLE_STR      = function(...) return ... end
+getgenv().PP_SCRAMBLE_RE_NUM   = function(...) return ... end
+
+---@module Utility.Profiler
+local Profiler = require("Utility/Profiler")
+
+---@module Lycoris
+local Lycoris = require("Lycoris")
 
 local function initializeScript()
     if shared.Lycoris then
@@ -56,11 +46,12 @@ local function initializeScript()
     shared.Lycoris.init()
 end
 
-local function onInitializeError(err)
+---@param error string
+local function onInitializeError(error)
     warn("Failed to initialize.")
-    warn(err)
+    warn(error)
     warn(debug.traceback())
-    pcall(function() Lycoris.detach() end)
+    Lycoris.detach()
 end
 
 Profiler.run("Main_InitializeScript", function(...)
