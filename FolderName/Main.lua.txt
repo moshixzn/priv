@@ -1,4 +1,4 @@
-local BASE = "https://raw.githubusercontent.com/moshixzn/priv/main/"
+local BASE = "https://raw.githubusercontent.com/moshixzn/priv/main/FolderName/"
 
 -- No shared table = nothing to do
 if not shared then
