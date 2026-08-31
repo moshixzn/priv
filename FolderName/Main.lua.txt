@@ -1,35 +1,49 @@
 local BASE = "https://raw.githubusercontent.com/moshixzn/priv/main/"
 
--- Override require to fetch from GitHub
-local _require = require
-local cache = {}
-function require(path)
-    path = path:gsub("%.", "/")
-    if cache[path] then return cache[path] end
-    local url = BASE .. path .. ".lua.txt"
-    local ok, result = pcall(function()
-        return loadstring(game:HttpGet(url))()
-    end)
-    if not ok then
-        result = loadstring(game:HttpGet(BASE .. path .. ".lua"))()
-    end
-    cache[path] = result
-    return result
-end
-
 -- No shared table = nothing to do
 if not shared then
     return warn("No shared, no script.")
 end
 
--- Initialize Luraph + preprocessor globals into the TRUE global env
--- so every module loaded via require() can see them immediately.
--- Using getgenv() instead of loadstring+getfenv() fixes the environment
--- isolation bug where LPH_NO_VIRTUALIZE was invisible to submodules.
-getgenv().LPH_NO_VIRTUALIZE   = function(...) return ... end
-getgenv().PP_SCRAMBLE_NUM      = function(...) return ... end
-getgenv().PP_SCRAMBLE_STR      = function(...) return ... end
-getgenv().PP_SCRAMBLE_RE_NUM   = function(...) return ... end
+-- Put ALL globals on getgenv() so every loadstring chunk can see them.
+-- The require override MUST be on getgenv() — if it's only in the local
+-- script env, loadstring chunks inside Lycoris/PlayerScanning etc. will
+-- call the original Roblox require instead, get nil back for every module,
+-- and then crash when calling .init() on nil.
+local cache = {}
+
+getgenv().require = function(path)
+    path = path:gsub("%.", "/")
+    if cache[path] then return cache[path] end
+
+    local url = BASE .. path .. ".lua.txt"
+    local ok, result = pcall(function()
+        return loadstring(game:HttpGet(url))()
+    end)
+    if not ok then
+        -- fallback: try without .txt extension
+        local ok2, result2 = pcall(function()
+            return loadstring(game:HttpGet(BASE .. path .. ".lua"))()
+        end)
+        if ok2 then
+            result = result2
+        else
+            warn("[require] Failed to load module: " .. path)
+            warn("[require] Error: " .. tostring(result2))
+            return nil
+        end
+    end
+
+    cache[path] = result
+    return result
+end
+
+-- Luraph / preprocessor stubs on getgenv() so obfuscated submodules
+-- that reference these globals find them regardless of their environment.
+getgenv().LPH_NO_VIRTUALIZE  = function(...) return ... end
+getgenv().PP_SCRAMBLE_NUM     = function(...) return ... end
+getgenv().PP_SCRAMBLE_STR     = function(...) return ... end
+getgenv().PP_SCRAMBLE_RE_NUM  = function(...) return ... end
 
 ---@module Utility.Profiler
 local Profiler = require("Utility/Profiler")
@@ -46,10 +60,10 @@ local function initializeScript()
     shared.Lycoris.init()
 end
 
----@param error string
-local function onInitializeError(error)
+---@param err string
+local function onInitializeError(err)
     warn("Failed to initialize.")
-    warn(error)
+    warn(err)
     warn(debug.traceback())
     Lycoris.detach()
 end
