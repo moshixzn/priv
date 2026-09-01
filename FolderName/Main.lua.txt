@@ -51,9 +51,6 @@ local Profiler = require("Utility/Profiler")
 ---@module Lycoris
 local Lycoris = require("Lycoris")
 
-local GameConfig = require("Game/GameConfig")
-local AutoParry = require("Modules/AutoParry")
-
 local function initializeScript()
     if shared.Lycoris then
         shared.Lycoris.detach()
@@ -75,7 +72,5 @@ end
 Profiler.run("Main_InitializeScript", function(...)
     return xpcall(initializeScript, onInitializeError, ...)
 end)
-game:GetService("RunService").Heartbeat:Connect(function()
-    AutoParry:update()
-end)
+
 
