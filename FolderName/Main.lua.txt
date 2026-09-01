@@ -57,7 +57,6 @@ local function initializeScript()
         Lycoris.queued = shared.Lycoris.queued
     end
         shared.Lycoris = Lycoris
-    AutoParry.init(GameConfig["TypeSoul"])
     shared.Lycoris.init()
 end
 
