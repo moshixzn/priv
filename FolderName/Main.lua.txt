@@ -1,49 +1,22 @@
-local BASE = "https://raw.githubusercontent.com/moshixzn/priv/main/FolderName/"
-
--- No shared table = nothing to do
+-- Check for table that is shared between executions.
 if not shared then
-    return warn("No shared, no script.")
+	return warn("No shared, no script.")
 end
 
--- Put ALL globals on getgenv() so every loadstring chunk can see them.
--- The require override MUST be on getgenv() — if it's only in the local
--- script env, loadstring chunks inside Lycoris/PlayerScanning etc. will
--- call the original Roblox require instead, get nil back for every module,
--- and then crash when calling .init() on nil.
-local cache = {}
+-- Initialize Luraph globals if they do not exist.
+loadstring("getfenv().LPH_NO_VIRTUALIZE = function(...) return ... end")()
 
-getgenv().require = function(path)
-    path = path:gsub("%.", "/")
-    if cache[path] then return cache[path] end
-
-    local url = BASE .. path .. ".lua.txt"
-    local ok, result = pcall(function()
-        return loadstring(game:HttpGet(url))()
-    end)
-    if not ok then
-        -- fallback: try without .txt extension
-        local ok2, result2 = pcall(function()
-            return loadstring(game:HttpGet(BASE .. path .. ".lua"))()
-        end)
-        if ok2 then
-            result = result2
-        else
-            warn("[require] Failed to load module: " .. path)
-            warn("[require] Error: " .. tostring(result2))
-            return nil
-        end
-    end
-
-    cache[path] = result
-    return result
+getfenv().PP_SCRAMBLE_NUM = function(...)
+	return ...
 end
 
--- Luraph / preprocessor stubs on getgenv() so obfuscated submodules
--- that reference these globals find them regardless of their environment.
-getgenv().LPH_NO_VIRTUALIZE  = function(...) return ... end
-getgenv().PP_SCRAMBLE_NUM     = function(...) return ... end
-getgenv().PP_SCRAMBLE_STR     = function(...) return ... end
-getgenv().PP_SCRAMBLE_RE_NUM  = function(...) return ... end
+getfenv().PP_SCRAMBLE_STR = function(...)
+	return ...
+end
+
+getfenv().PP_SCRAMBLE_RE_NUM = function(...)
+	return ...
+end
 
 ---@module Utility.Profiler
 local Profiler = require("Utility/Profiler")
@@ -51,25 +24,37 @@ local Profiler = require("Utility/Profiler")
 ---@module Lycoris
 local Lycoris = require("Lycoris")
 
+---Find existing instances and initialize the script.
 local function initializeScript()
-    if shared.Lycoris then
-        shared.Lycoris.detach()
-        Lycoris.queued = shared.Lycoris.queued
-    end
-        shared.Lycoris = Lycoris
-    shared.Lycoris.init()
+	-- Check if there's already another instance.
+	if shared.Lycoris then
+		-- Detach previous instance.
+		shared.Lycoris.detach()
+
+		-- Share the previous state.
+		Lycoris.queued = shared.Lycoris.queued
+	end
+
+	-- Re-initialize under the new state.
+	shared.Lycoris = Lycoris
+	shared.Lycoris.init()
 end
 
----@param err string
-local function onInitializeError(err)
-    warn("Failed to initialize.")
-    warn(err)
-    warn(debug.traceback())
-    Lycoris.detach()
+---This is called when the initalization errors.
+---@param error string
+local function onInitializeError(error)
+	-- Warn that an error happened while initializing.
+	warn("Failed to initialize.")
+	warn(error)
+
+	-- Warn traceback.
+	warn(debug.traceback())
+
+	-- Detach the current instance.
+	Lycoris.detach()
 end
 
+-- Safely profile and initialize the script aswell as handle errors.
 Profiler.run("Main_InitializeScript", function(...)
-    return xpcall(initializeScript, onInitializeError, ...)
+	return xpcall(initializeScript, onInitializeError, ...)
 end)
-
-
